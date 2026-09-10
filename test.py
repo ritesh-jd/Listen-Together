@@ -1,2 +1,0 @@
-print("ritesh")
-print("mahendra")
