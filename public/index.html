@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Listen Together</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="room-status-badge" class="hidden">
+    <span id="room-count-icon">👥</span>
+    <span id="room-count-text">1</span>
+    <span id="room-names-inline"></span>
+  </div>
+  <div id="toast-container"></div>
+
+  <div id="app">
+    <header>
+      <h1>🎧 Listen Together</h1>
+      <p class="subtitle">Play your own music in sync with Ritesh, from anywhere.</p>
+    </header>
+
+    <div class="card-grid">
+    <section id="room-panel" class="card">
+      <h2>1. Join a room</h2>
+      <div class="row">
+        <input id="display-name-input" type="text" placeholder="Your name" maxlength="20" />
+      </div>
+      <div class="row">
+        <input id="room-code-input" type="text" placeholder="Room code (e.g. PEACH12)" />
+        <button id="join-room-btn">Create / Join</button>
+      </div>
+      <p id="room-share-hint" class="hint"></p>
+    </section>
+
+    <section id="player-panel" class="card hidden">
+      <div class="row space-between">
+        <h2>Now playing</h2>
+        <span id="host-badge" class="badge"></span>
+      </div>
+
+      <div id="now-playing" class="now-playing">
+        <div>
+          <div id="now-playing-title">Nothing playing yet</div>
+          <div id="sync-status" class="sync-status">Sync: waiting</div>
+        </div>
+      </div>
+
+      <audio id="audio-el" preload="auto"></audio>
+
+      <div class="row controls">
+        <button id="skip-back-btn" class="btn-ghost">⏪ 10s</button>
+        <button id="play-btn">▶ Play</button>
+        <button id="pause-btn" class="btn-ghost">⏸ Pause</button>
+        <button id="skip-forward-btn" class="btn-ghost">10s ⏩</button>
+        <button id="claim-host-btn" class="btn-ghost">🎙 Take control</button>
+      </div>
+      <input id="seek-slider" type="range" min="0" max="100" value="0" />
+    </section>
+
+    <section id="library-panel" class="card wide-card hidden">
+      <div class="library-columns">
+        <div class="library-col">
+          <h2>2. Music library</h2>
+          <p class="hint">Upload audio files here — whoever uploads them, both of you can play them.</p>
+          <input id="track-search-input" type="text" placeholder="Search your library..." />
+          <input id="file-input" type="file" accept="audio/*" multiple style="margin-top: 14px;" />
+          <button id="upload-btn">Upload</button>
+          <p id="upload-status" class="hint"></p>
+          <ul id="track-list"></ul>
+        </div>
+
+        <div class="library-col">
+          <h2>Playlists</h2>
+          <p class="hint">Group your favorites so you're not scrolling the whole library every time.</p>
+          <div class="row">
+            <input id="new-playlist-input" type="text" placeholder="New playlist name..." />
+            <button id="create-playlist-btn">+ Create</button>
+          </div>
+          <select id="playlist-select">
+            <option value="">All tracks (no playlist selected)</option>
+          </select>
+          <ul id="playlist-track-list"></ul>
+          <button
+            id="delete-playlist-btn"
+            class="hidden playlist-action-btn"
+            type="button"
+            aria-label="Delete this playlist"
+            title="Delete this playlist"
+          >⋯</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="chat-panel" class="card hidden">
+      <h2>Chat</h2>
+
+      <div id="voice-call-wrap">
+        <button id="voice-call-trigger" class="voice-call-trigger" type="button" aria-label="Start voice call">🎤</button>
+
+        <div id="voice-call-popup" class="voice-call-popup hidden" role="dialog" aria-live="polite" aria-modal="true">
+          <div class="voice-call-header">
+            <span class="voice-call-pill">Voice call</span>
+            <button id="voice-call-close-btn" class="voice-call-close" type="button" aria-label="Close">×</button>
+          </div>
+
+          <div class="row space-between">
+            <span id="call-status" class="hint">Voice call: idle</span>
+          </div>
+
+          <div class="row hidden" id="call-controls">
+            <button id="start-call-btn">🎤 Start Voice Call</button>
+          </div>
+          <div class="row hidden" id="calling-controls">
+            <button id="cancel-call-btn" class="btn-ghost">✖ Cancel Call</button>
+          </div>
+          <div class="row hidden" id="incoming-call-banner">
+            <button id="accept-call-btn">✅ Accept</button>
+            <button id="decline-call-btn" class="btn-ghost">❌ Decline</button>
+          </div>
+          <div class="row hidden" id="active-call-controls">
+            <button id="mute-btn" class="btn-ghost">🔇 Mute</button>
+            <button id="end-call-btn">📞 End Call</button>
+          </div>
+        </div>
+
+        <audio id="remote-audio" autoplay></audio>
+      </div>
+
+      <div id="chat-wrap">
+        <ul id="chat-log"></ul>
+        <div class="row">
+          <input id="chat-input" type="text" placeholder="Say something..." />
+          <button id="chat-send-btn">Send</button>
+        </div>
+      </div>
+    </section>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
