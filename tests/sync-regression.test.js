@@ -20,6 +20,10 @@ if (!source.includes('localStorage.getItem("lt_owner_token")') || !source.includ
   throw new Error('Owner token recovery for playlist creation is missing.');
 }
 
+if (!source.includes('await refreshPlaylists();')) {
+  throw new Error('Playlist list is not being refreshed when the app loads or a room is joined.');
+}
+
 if (source.includes('remove-btn') || source.includes('✕')) {
   throw new Error('Per-track delete buttons are still rendered in the UI.');
 }

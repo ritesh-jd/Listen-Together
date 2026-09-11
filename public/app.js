@@ -66,6 +66,7 @@ async function initLibraryAccess() {
       isLibraryOwner = false;
     }
 
+    await refreshPlaylists();
     renderTrackList(allTracks);
     renderPlaylistSelect();
     renderActivePlaylistTracks();
@@ -313,7 +314,7 @@ function getDisplayName() {
   return localStorage.getItem("lt_display_name") || "Friend-" + Math.floor(Math.random() * 1000);
 }
 
-$("join-room-btn").addEventListener("click", () => {
+$("join-room-btn").addEventListener("click", async () => {
   let code = $("room-code-input").value.trim().toUpperCase();
   if (!code) {
     code = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -325,7 +326,8 @@ $("join-room-btn").addEventListener("click", () => {
   showPanel("library-panel");
   showPanel("player-panel");
   showPanel("chat-panel");
-  refreshTrackList();
+  await refreshTrackList();
+  await refreshPlaylists();
 });
 
 function connectSocket(roomCode) {
