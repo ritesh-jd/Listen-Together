@@ -99,7 +99,31 @@ function renderTrackList(tracks) {
     nameSpan.textContent = t.name;
     nameSpan.addEventListener("click", () => playTrack(t));
 
+    const addBtn = document.createElement("button");
+    addBtn.className = "add-to-playlist-btn";
+    addBtn.textContent = "+";
+    addBtn.title = activePlaylist ? `Add to ${activePlaylist}` : "Choose a playlist first";
+    addBtn.disabled = !isLibraryOwner || !activePlaylist;
+    addBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!activePlaylist) return;
+      const res = await fetch(`/api/playlists/${encodeURIComponent(activePlaylist)}/tracks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-owner-token": ownerToken,
+        },
+        body: JSON.stringify({ trackId: t.id, roomCode: currentRoomCode }),
+      });
+      if (!res.ok) {
+        console.error("Add track to playlist failed", await res.text());
+        return;
+      }
+      await refreshPlaylists();
+    });
+
     li.appendChild(nameSpan);
+    li.appendChild(addBtn);
     list.appendChild(li);
   });
   if (tracks.length === 0) {
@@ -137,9 +161,11 @@ $("upload-btn").addEventListener("click", async () => {
 // ---------- Playlists ----------
 let allPlaylists = {};
 let activePlaylist = null;
+let currentRoomCode = null;
 
 async function refreshPlaylists() {
-  const res = await fetch("/api/playlists");
+  const roomCode = currentRoomCode || "";
+  const res = await fetch(roomCode ? `/api/playlists?roomCode=${encodeURIComponent(roomCode)}` : "/api/playlists");
   const { playlists } = await res.json();
   allPlaylists = playlists || {};
   renderPlaylistSelect();
@@ -207,6 +233,7 @@ function renderActivePlaylistTracks() {
 $("playlist-select").addEventListener("change", () => {
   activePlaylist = $("playlist-select").value || null;
   $("delete-playlist-btn").classList.toggle("hidden", !(isLibraryOwner && activePlaylist));
+  renderTrackList(allTracks);
   renderActivePlaylistTracks();
 });
 
@@ -224,7 +251,7 @@ $("create-playlist-btn").addEventListener("click", async () => {
       "Content-Type": "application/json",
       "x-owner-token": ownerToken,
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, roomCode: currentRoomCode }),
   });
   if (!res.ok) {
     console.error("Playlist create failed", await res.text());
@@ -234,12 +261,13 @@ $("create-playlist-btn").addEventListener("click", async () => {
   activePlaylist = name;
   await refreshPlaylists();
   $("playlist-select").value = name;
+  renderTrackList(allTracks);
 });
 
 $("delete-playlist-btn").addEventListener("click", async () => {
   if (!activePlaylist || !isLibraryOwner) return;
   if (!confirm(`Delete the playlist "${activePlaylist}"? This won't delete the songs themselves.`)) return;
-  const res = await fetch(`/api/playlists/${encodeURIComponent(activePlaylist)}`, {
+  const res = await fetch(`/api/playlists/${encodeURIComponent(activePlaylist)}?roomCode=${encodeURIComponent(currentRoomCode || "")}`, {
     method: "DELETE",
     headers: { "x-owner-token": ownerToken },
   });
@@ -249,6 +277,7 @@ $("delete-playlist-btn").addEventListener("click", async () => {
   }
   activePlaylist = null;
   await refreshPlaylists();
+  renderTrackList(allTracks);
 });
 
 // ---------- Room / sync ----------
@@ -320,6 +349,7 @@ $("join-room-btn").addEventListener("click", async () => {
     code = Math.random().toString(36).slice(2, 8).toUpperCase();
     $("room-code-input").value = code;
   }
+  currentRoomCode = code;
   $("room-share-hint").textContent =
     `Share this room code with your friend: ${code} (or send them the link: ${window.location.origin}/?room=${code})`;
   connectSocket(code);

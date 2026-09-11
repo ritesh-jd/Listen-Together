@@ -110,7 +110,7 @@ app.delete("/api/tracks/:id", requireOwner, (req, res) => {
 });
 
 // ---------- Playlists ----------
-// Stored as a simple JSON file: { "Playlist Name": ["trackId1", "trackId2"] }
+// Stored per room: { "roomCode": { "Playlist Name": ["trackId1", "trackId2"] } }
 const PLAYLISTS_FILE = path.join(__dirname, "playlists.json");
 
 function loadPlaylists() {
@@ -125,43 +125,69 @@ function savePlaylists(playlists) {
   fs.writeFileSync(PLAYLISTS_FILE, JSON.stringify(playlists, null, 2));
 }
 
+function getRoomPlaylists(roomCode) {
+  const all = loadPlaylists();
+  const safeRoomCode = String(roomCode || "").trim();
+  if (!safeRoomCode) return {};
+  if (!all[safeRoomCode]) all[safeRoomCode] = {};
+  return all[safeRoomCode];
+}
+
+function saveRoomPlaylists(roomCode, roomSet) {
+  const all = loadPlaylists();
+  const safeRoomCode = String(roomCode || "").trim();
+  if (!safeRoomCode) return;
+  all[safeRoomCode] = roomSet;
+  savePlaylists(all);
+}
+
 app.get("/api/playlists", (req, res) => {
-  res.json({ playlists: loadPlaylists() });
+  const roomCode = req.query.roomCode || "";
+  const roomPlaylists = getRoomPlaylists(roomCode);
+  res.json({ playlists: roomPlaylists });
 });
 
 app.post("/api/playlists", requireOwner, (req, res) => {
+  const roomCode = String(req.body?.roomCode || "").trim();
   const name = (req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "name required" });
-  const playlists = loadPlaylists();
-  if (!playlists[name]) playlists[name] = [];
-  savePlaylists(playlists);
-  res.json({ playlists });
+  if (!roomCode) return res.status(400).json({ error: "room required" });
+  const roomPlaylists = getRoomPlaylists(roomCode);
+  if (!roomPlaylists[name]) roomPlaylists[name] = [];
+  saveRoomPlaylists(roomCode, roomPlaylists);
+  res.json({ playlists: roomPlaylists });
 });
 
 app.delete("/api/playlists/:name", requireOwner, (req, res) => {
-  const playlists = loadPlaylists();
-  delete playlists[req.params.name];
-  savePlaylists(playlists);
-  res.json({ playlists });
+  const roomCode = String(req.query.roomCode || "").trim();
+  if (!roomCode) return res.status(400).json({ error: "room required" });
+  const roomPlaylists = getRoomPlaylists(roomCode);
+  delete roomPlaylists[req.params.name];
+  saveRoomPlaylists(roomCode, roomPlaylists);
+  res.json({ playlists: roomPlaylists });
 });
 
 app.post("/api/playlists/:name/tracks", requireOwner, (req, res) => {
+  const roomCode = String(req.body?.roomCode || "").trim();
   const trackId = req.body?.trackId;
-  const playlists = loadPlaylists();
-  const list = playlists[req.params.name];
+  if (!roomCode) return res.status(400).json({ error: "room required" });
+  const roomPlaylists = getRoomPlaylists(roomCode);
+  const list = roomPlaylists[req.params.name];
   if (!list) return res.status(404).json({ error: "playlist not found" });
   if (trackId && !list.includes(trackId)) list.push(trackId);
-  savePlaylists(playlists);
-  res.json({ playlists });
+  saveRoomPlaylists(roomCode, roomPlaylists);
+  res.json({ playlists: roomPlaylists });
 });
 
 app.delete("/api/playlists/:name/tracks/:trackId", requireOwner, (req, res) => {
-  const playlists = loadPlaylists();
-  const list = playlists[req.params.name];
+  const roomCode = String(req.query.roomCode || "").trim();
+  if (!roomCode) return res.status(400).json({ error: "room required" });
+  const roomPlaylists = getRoomPlaylists(roomCode);
+  const list = roomPlaylists[req.params.name];
   if (!list) return res.status(404).json({ error: "playlist not found" });
-  playlists[req.params.name] = list.filter((id) => id !== req.params.trackId);
-  savePlaylists(playlists);
-  res.json({ playlists });
+  roomPlaylists[req.params.name] = list.filter((id) => id !== req.params.trackId);
+  saveRoomPlaylists(roomCode, roomPlaylists);
+  res.json({ playlists: roomPlaylists });
 });
 
 // ---------- Room relay (same pattern as before) ----------
