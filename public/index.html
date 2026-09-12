@@ -56,9 +56,17 @@
         <button id="play-btn">▶ Play</button>
         <button id="pause-btn" class="btn-ghost">⏸ Pause</button>
         <button id="skip-forward-btn" class="btn-ghost">10s ⏩</button>
+        <button id="queue-toggle-btn" class="btn-ghost" type="button">Queue</button>
         <button id="claim-host-btn" class="btn-ghost">🎙 Take control</button>
       </div>
       <input id="seek-slider" type="range" min="0" max="100" value="0" />
+
+      <div id="queue-panel" class="queue-panel hidden">
+        <div class="queue-header">
+          <h3>Queue</h3>
+        </div>
+        <ul id="queue-list"></ul>
+      </div>
     </section>
 
     <section id="library-panel" class="card wide-card hidden">

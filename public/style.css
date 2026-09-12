@@ -316,6 +316,52 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   100% { box-shadow: 0 0 0 0 rgba(255, 138, 92, 0); }
 }
 
+.queue-panel {
+  margin-top: 16px;
+  padding: 14px 14px 8px;
+  background: rgba(17, 13, 24, 0.35);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.queue-header h3 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+#queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+#queue-list li {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-size: 0.9em;
+}
+
+#queue-list li.queue-current {
+  border-color: rgba(255, 138, 92, 0.8);
+  background: rgba(255, 138, 92, 0.08);
+}
+
+#queue-list li.queue-empty {
+  color: var(--muted);
+  border-style: dashed;
+}
+
 .sync-status { margin-top: 6px; font-size: 0.8em; color: var(--muted); }
 .sync-status.good { color: var(--good); }
 .sync-status.warn { color: var(--warn); }

@@ -210,20 +210,38 @@ io.on("connection", (socket) => {
   let joinedRoom = null;
 
   socket.on("join-room", ({ roomCode, name }) => {
-    joinedRoom = roomCode;
-    const room = getOrCreateRoom(roomCode);
+    const cleanRoomCode = String(roomCode || "").trim();
+    const cleanName = String(name || "").trim();
+    if (!cleanRoomCode || !cleanName) {
+      socket.emit("join-error", { message: "Name is required to join a room." });
+      return;
+    }
+
+    const room = getOrCreateRoom(cleanRoomCode);
+    const duplicateName = Array.from(room.members)
+      .some((memberId) => {
+        const memberName = io.sockets.sockets.get(memberId)?.data?.name;
+        return memberName && memberName.trim().toLowerCase() === cleanName.toLowerCase();
+      });
+
+    if (duplicateName) {
+      socket.emit("join-error", { message: "This name is already taken in the room. Choose a unique name." });
+      return;
+    }
+
+    joinedRoom = cleanRoomCode;
     room.members.add(socket.id);
-    socket.join(roomCode);
+    socket.join(cleanRoomCode);
 
     if (!room.hostSocketId) room.hostSocketId = socket.id;
 
-    socket.data.name = name || "Someone";
+    socket.data.name = cleanName;
     socket.emit("joined", {
       isHost: room.hostSocketId === socket.id,
       lastState: room.lastState,
     });
-    socket.to(roomCode).emit("peer-joined", { name: socket.data.name });
-    io.to(roomCode).emit("room-count", { count: room.members.size, names: getRoomNames(room) });
+    socket.to(cleanRoomCode).emit("peer-joined", { name: socket.data.name });
+    io.to(cleanRoomCode).emit("room-count", { count: room.members.size, names: getRoomNames(room) });
   });
 
   socket.on("time-sync", (clientTime) => {

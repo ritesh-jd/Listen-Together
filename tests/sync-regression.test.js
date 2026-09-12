@@ -35,4 +35,16 @@ if (!serverSource.includes('Track deletion is only allowed from the server root 
   throw new Error('Track deletion is still enabled through the API.');
 }
 
+if (!source.includes('room-names-inline') || !source.includes('room-count-text')) {
+  throw new Error('Room member names are not being rendered in the status badge.');
+}
+
+if (!serverSource.includes('room name is already taken') && !serverSource.includes('name is already taken')) {
+  throw new Error('Duplicate names are not being rejected in a room.');
+}
+
+if (!source.includes('addEventListener("ended"') && !source.includes("addEventListener('ended'")) {
+  throw new Error('Auto-advance queue behaviour is missing when a track ends.');
+}
+
 console.log('sync regression check passed');

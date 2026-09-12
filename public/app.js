@@ -284,6 +284,8 @@ $("delete-playlist-btn").addEventListener("click", async () => {
 let socket = null;
 let isHost = false;
 let currentTrack = null; // {id, name, url}
+let playbackQueue = [];
+let currentQueueIndex = -1;
 let suppressDrift = false; // briefly ignore drift-correction while a scheduled action is pending
 let lastReportedDiffMs = 0;
 
@@ -336,14 +338,25 @@ function updateSyncStatus(diffMs) {
 
 function getDisplayName() {
   const typed = $("display-name-input").value.trim();
-  if (typed) {
-    localStorage.setItem("lt_display_name", typed);
-    return typed;
+  if (!typed) {
+    alert("Please enter your name before joining a room.");
+    return "";
   }
-  return localStorage.getItem("lt_display_name") || "Friend-" + Math.floor(Math.random() * 1000);
+  localStorage.setItem("lt_display_name", typed);
+  return typed;
+}
+
+function updateRoomBadge(count, names = []) {
+  $("room-count-text").textContent = String(count || 0);
+  const visibleNames = (names || []).filter(Boolean);
+  $("room-names-inline").textContent = visibleNames.length ? `(${visibleNames.join(", ")})` : "";
+  $("room-status-badge").classList.remove("hidden");
 }
 
 $("join-room-btn").addEventListener("click", async () => {
+  const name = getDisplayName();
+  if (!name) return;
+
   let code = $("room-code-input").value.trim().toUpperCase();
   if (!code) {
     code = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -398,10 +411,12 @@ function connectSocket(roomCode) {
   socket.on("peer-joined", ({ name }) => logChat("system", `${name} joined the room`));
   socket.on("peer-left", ({ name }) => logChat("system", `${name} left the room`));
   socket.on("chat", ({ name, text }) => logChat(name, text));
+  socket.on("join-error", ({ message }) => {
+    alert(message || "Unable to join this room.");
+  });
 
-  socket.on("room-count", ({ count }) => {
-    $("room-count-text").textContent = count;
-    $("room-status-badge").classList.remove("hidden");
+  socket.on("room-count", ({ count, names = [] }) => {
+    updateRoomBadge(count, names);
   });
 
   // ---------- Voice call signaling ----------
@@ -520,6 +535,67 @@ function buildScheduledState(isPlaying, positionMs) {
   };
 }
 
+function normalizeTrack(track) {
+  if (!track) return null;
+  return {
+    id: track.id || track.trackId || track.name,
+    name: track.name || "Unknown track",
+    url: track.url || "",
+  };
+}
+
+function renderQueueList() {
+  const list = $("queue-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!playbackQueue.length) {
+    const li = document.createElement("li");
+    li.className = "queue-empty";
+    li.textContent = "No songs queued yet.";
+    list.appendChild(li);
+    return;
+  }
+
+  playbackQueue.forEach((track, index) => {
+    const li = document.createElement("li");
+    if (index === currentQueueIndex) li.classList.add("queue-current");
+    li.textContent = `${index === currentQueueIndex ? "Now: " : ""}${track.name}`;
+    list.appendChild(li);
+  });
+}
+
+function toggleQueuePanel(forceOpen) {
+  const panel = $("queue-panel");
+  if (!panel) return;
+  const nextState = typeof forceOpen === "boolean" ? forceOpen : panel.classList.contains("hidden");
+  panel.classList.toggle("hidden", !nextState);
+}
+
+function queueTrackForPlayback(track) {
+  const normalized = normalizeTrack(track);
+  if (!normalized || !normalized.url) return;
+
+  const existingIndex = playbackQueue.findIndex((queued) => queued.id === normalized.id);
+  if (existingIndex >= 0) {
+    currentQueueIndex = existingIndex;
+    renderQueueList();
+    return;
+  }
+
+  playbackQueue.push(normalized);
+  currentQueueIndex = playbackQueue.length - 1;
+  renderQueueList();
+}
+
+function getNextQueuedTrack() {
+  if (playbackQueue.length === 0 || currentQueueIndex < 0) return null;
+  const nextIndex = currentQueueIndex + 1;
+  if (nextIndex >= playbackQueue.length) return null;
+  return playbackQueue[nextIndex];
+}
+
 function broadcastScheduled(state) {
   if (!socket || !isHost) return;
   socket.emit("playback-update", state);
@@ -618,7 +694,11 @@ function applyDriftCorrection(state) {
 
 // ---------- User actions (host side) ----------
 async function playTrack(track) {
-  currentTrack = track;
+  const normalized = normalizeTrack(track);
+  if (!normalized) return;
+
+  queueTrackForPlayback(normalized);
+  currentTrack = normalized;
   if (!isHost) {
     isHost = true;
     socket.emit("claim-host");
@@ -627,7 +707,12 @@ async function playTrack(track) {
   const state = buildScheduledState(true, 0);
   broadcastScheduled(state); // send first, so the follower gets max lead time
   schedulePlayback(state); // then apply to ourselves — both fire at the same shared instant
+  renderQueueList();
 }
+
+$("queue-toggle-btn").addEventListener("click", () => {
+  toggleQueuePanel();
+});
 
 $("play-btn").addEventListener("click", () => {
   if (!currentTrack) return;
@@ -692,6 +777,22 @@ audio().addEventListener("timeupdate", () => {
     };
     socket.emit("drift-sync", state);
   }
+});
+
+audio().addEventListener("ended", () => {
+  if (!isHost || !socket) return;
+  const nextTrack = getNextQueuedTrack();
+  if (!nextTrack) return;
+
+  currentQueueIndex += 1;
+  const nextNormalized = normalizeTrack(nextTrack);
+  if (!nextNormalized) return;
+
+  currentTrack = nextNormalized;
+  const state = buildScheduledState(true, 0);
+  broadcastScheduled(state);
+  schedulePlayback(state);
+  renderQueueList();
 });
 
 // Host periodically pings the room with its exact position on the shared
