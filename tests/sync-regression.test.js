@@ -51,4 +51,8 @@ if (!source.includes('queue-next') || !source.includes('add to playlist')) {
   throw new Error('Song overflow actions are missing queue-next and playlist options.');
 }
 
+if (!source.includes('getPlaylistNextTrack') && !source.includes('currentPlaylistTracks')) {
+  throw new Error('Playback should fall back to the current playlist when the queue is exhausted.');
+}
+
 console.log('sync regression check passed');

@@ -698,11 +698,31 @@ function queueTrackForPlayback(track) {
   renderQueueList();
 }
 
+function getCurrentPlaylistTrackIds() {
+  if (!activePlaylist || !allPlaylists[activePlaylist]) return [];
+  return allPlaylists[activePlaylist].map((id) => id).filter(Boolean);
+}
+
+function getPlaylistNextTrack(currentId) {
+  const playlistIds = getCurrentPlaylistTrackIds();
+  if (!playlistIds.length) return null;
+
+  const currentIndex = playlistIds.indexOf(currentId);
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % playlistIds.length : 0;
+  const nextId = playlistIds[nextIndex];
+  return allTracks.find((track) => track.id === nextId) || null;
+}
+
 function getNextQueuedTrack() {
   if (playbackQueue.length === 0 || currentQueueIndex < 0) return null;
   const nextIndex = currentQueueIndex + 1;
   if (nextIndex >= playbackQueue.length) return null;
   return playbackQueue[nextIndex];
+}
+
+function getPlaylistFallbackTrack() {
+  if (!currentTrack) return null;
+  return getPlaylistNextTrack(currentTrack.id) || allTracks.find((track) => track.id !== currentTrack.id) || null;
 }
 
 function broadcastScheduled(state) {
@@ -890,14 +910,33 @@ audio().addEventListener("timeupdate", () => {
 
 audio().addEventListener("ended", () => {
   if (!isHost || !socket) return;
-  const nextTrack = getNextQueuedTrack();
-  if (!nextTrack) return;
 
-  currentQueueIndex += 1;
+  let nextTrack = getNextQueuedTrack();
+  if (!nextTrack) {
+    nextTrack = getPlaylistFallbackTrack();
+  }
+
+  if (!nextTrack) {
+    return;
+  }
+
+  if (playbackQueue.length && currentQueueIndex >= 0) {
+    currentQueueIndex += 1;
+    if (currentQueueIndex >= playbackQueue.length) {
+      currentQueueIndex = playbackQueue.length - 1;
+    }
+  }
+
   const nextNormalized = normalizeTrack(nextTrack);
   if (!nextNormalized) return;
 
   currentTrack = nextNormalized;
+  if (playbackQueue.length && !playbackQueue.some((item) => item.id === nextNormalized.id)) {
+    playbackQueue.push(nextNormalized);
+    currentQueueIndex = playbackQueue.length - 1;
+    renderQueueList();
+  }
+
   const state = buildScheduledState(true, 0);
   broadcastScheduled(state);
   schedulePlayback(state);
