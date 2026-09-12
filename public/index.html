@@ -11,9 +11,14 @@
 </head>
 <body>
   <div id="room-status-badge" class="hidden">
-    <span id="room-count-icon">👥</span>
-    <span id="room-count-text">1</span>
-    <span id="room-names-inline"></span>
+    <button id="room-badge-button" type="button" class="room-badge-button" aria-expanded="false" aria-controls="room-badge-menu">
+      <span id="room-count-icon">👥</span>
+      <span id="room-count-text">1</span>
+    </button>
+    <div id="room-badge-menu" class="room-badge-menu hidden" role="menu" aria-label="Participants list">
+      <div class="room-badge-menu-title">Participants</div>
+      <ul id="room-names-inline"></ul>
+    </div>
   </div>
   <div id="toast-container"></div>
 

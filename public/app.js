@@ -88,6 +88,46 @@ async function refreshTrackList() {
   renderTrackList(allTracks);
 }
 
+async function addTrackToActivePlaylist(track) {
+  if (!activePlaylist) return;
+  const res = await fetch(`/api/playlists/${encodeURIComponent(activePlaylist)}/tracks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-owner-token": ownerToken,
+    },
+    body: JSON.stringify({ trackId: track.id, roomCode: currentRoomCode }),
+  });
+  if (!res.ok) {
+    console.error("Add track to playlist failed", await res.text());
+    return;
+  }
+  await refreshPlaylists();
+}
+
+function queueTrackAfterCurrent(track) {
+  const normalized = normalizeTrack(track);
+  if (!normalized || !normalized.url) return;
+
+  if (playbackQueue.length === 0 || currentQueueIndex < 0) {
+    queueTrackForPlayback(normalized);
+    return;
+  }
+
+  const insertIndex = currentQueueIndex + 1;
+  const existingIndex = playbackQueue.findIndex((queued) => queued.id === normalized.id);
+  if (existingIndex >= 0) {
+    if (existingIndex === insertIndex) return;
+    playbackQueue.splice(existingIndex, 1);
+  }
+
+  playbackQueue.splice(insertIndex, 0, normalized);
+  if (existingIndex > currentQueueIndex) {
+    currentQueueIndex = currentQueueIndex;
+  }
+  renderQueueList();
+}
+
 function renderTrackList(tracks) {
   const list = $("track-list");
   list.innerHTML = "";
@@ -99,31 +139,64 @@ function renderTrackList(tracks) {
     nameSpan.textContent = t.name;
     nameSpan.addEventListener("click", () => playTrack(t));
 
-    const addBtn = document.createElement("button");
-    addBtn.className = "add-to-playlist-btn";
-    addBtn.textContent = "+";
-    addBtn.title = activePlaylist ? `Add to ${activePlaylist}` : "Choose a playlist first";
-    addBtn.disabled = !isLibraryOwner || !activePlaylist;
-    addBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
+    const menuWrap = document.createElement("div");
+    menuWrap.className = "track-menu-wrap";
+
+    const menuButton = document.createElement("button");
+    menuButton.type = "button";
+    menuButton.className = "track-menu-trigger";
+    menuButton.textContent = "⋯";
+    menuButton.title = "More actions";
+    menuButton.setAttribute("aria-label", `More actions for ${t.name}`);
+
+    const menu = document.createElement("div");
+    menu.className = "track-menu hidden";
+
+    const queueNextBtn = document.createElement("button");
+    queueNextBtn.type = "button";
+    queueNextBtn.textContent = "Queue next";
+    queueNextBtn.className = "queue-next";
+    queueNextBtn.setAttribute("data-action", "queue-next");
+    queueNextBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      queueTrackAfterCurrent(t);
+      menu.classList.add("hidden");
+    });
+
+    const addToPlaylistBtn = document.createElement("button");
+    addToPlaylistBtn.type = "button";
+    addToPlaylistBtn.textContent = "Add to playlist";
+    addToPlaylistBtn.className = "add-to-playlist";
+    addToPlaylistBtn.setAttribute("data-action", "add to playlist");
+    addToPlaylistBtn.disabled = !isLibraryOwner || !activePlaylist;
+    addToPlaylistBtn.title = activePlaylist ? `Add to ${activePlaylist}` : "Choose a playlist first";
+    addToPlaylistBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      menu.classList.add("hidden");
       if (!activePlaylist) return;
-      const res = await fetch(`/api/playlists/${encodeURIComponent(activePlaylist)}/tracks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-owner-token": ownerToken,
-        },
-        body: JSON.stringify({ trackId: t.id, roomCode: currentRoomCode }),
-      });
-      if (!res.ok) {
-        console.error("Add track to playlist failed", await res.text());
-        return;
+      await addTrackToActivePlaylist(t);
+    });
+
+    menu.appendChild(queueNextBtn);
+    menu.appendChild(addToPlaylistBtn);
+    menuWrap.appendChild(menuButton);
+    menuWrap.appendChild(menu);
+
+    menuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = menu.classList.contains("hidden");
+      document.querySelectorAll(".track-menu").forEach((panel) => panel.classList.add("hidden"));
+      menu.classList.toggle("hidden", !open);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!menuWrap.contains(event.target)) {
+        menu.classList.add("hidden");
       }
-      await refreshPlaylists();
     });
 
     li.appendChild(nameSpan);
-    li.appendChild(addBtn);
+    li.appendChild(menuWrap);
     list.appendChild(li);
   });
   if (tracks.length === 0) {
@@ -349,9 +422,45 @@ function getDisplayName() {
 function updateRoomBadge(count, names = []) {
   $("room-count-text").textContent = String(count || 0);
   const visibleNames = (names || []).filter(Boolean);
-  $("room-names-inline").textContent = visibleNames.length ? `(${visibleNames.join(", ")})` : "";
+  const list = $("room-names-inline");
+  list.innerHTML = "";
+
+  if (!visibleNames.length) {
+    const item = document.createElement("li");
+    item.textContent = "No one else here";
+    list.appendChild(item);
+  } else {
+    visibleNames.forEach((name) => {
+      const item = document.createElement("li");
+      item.textContent = name;
+      list.appendChild(item);
+    });
+  }
+
   $("room-status-badge").classList.remove("hidden");
 }
+
+function toggleRoomBadgeMenu(forceOpen) {
+  const menu = $("room-badge-menu");
+  const button = $("room-badge-button");
+  if (!menu || !button) return;
+  const shouldOpen = typeof forceOpen === "boolean" ? forceOpen : menu.classList.contains("hidden");
+  menu.classList.toggle("hidden", !shouldOpen);
+  button.setAttribute("aria-expanded", String(shouldOpen));
+}
+
+$("room-badge-button").addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleRoomBadgeMenu();
+});
+
+document.addEventListener("click", (event) => {
+  const badge = $("room-status-badge");
+  const target = event.target;
+  if (badge && !badge.contains(target)) {
+    toggleRoomBadgeMenu(false);
+  }
+});
 
 $("join-room-btn").addEventListener("click", async () => {
   const name = getDisplayName();

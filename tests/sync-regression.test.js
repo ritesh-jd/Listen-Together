@@ -35,8 +35,8 @@ if (!serverSource.includes('Track deletion is only allowed from the server root 
   throw new Error('Track deletion is still enabled through the API.');
 }
 
-if (!source.includes('room-names-inline') || !source.includes('room-count-text')) {
-  throw new Error('Room member names are not being rendered in the status badge.');
+if (!source.includes('room-badge-button') || !source.includes('room-badge-menu')) {
+  throw new Error('Room member names are not hidden behind a compact click-to-expand badge.');
 }
 
 if (!serverSource.includes('room name is already taken') && !serverSource.includes('name is already taken')) {
@@ -45,6 +45,10 @@ if (!serverSource.includes('room name is already taken') && !serverSource.includ
 
 if (!source.includes('addEventListener("ended"') && !source.includes("addEventListener('ended'")) {
   throw new Error('Auto-advance queue behaviour is missing when a track ends.');
+}
+
+if (!source.includes('queue-next') || !source.includes('add to playlist')) {
+  throw new Error('Song overflow actions are missing queue-next and playlist options.');
 }
 
 console.log('sync regression check passed');
