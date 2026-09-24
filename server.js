@@ -278,34 +278,10 @@ io.on("connection", (socket) => {
     io.to(joinedRoom).emit("chat", { name: socket.data.name, text });
   });
 
-  // ---------- Voice call signaling ----------
-  // We just relay these between the two people in the room — the actual
-  // audio never touches this server, it flows peer-to-peer once connected.
-  socket.on("voice-offer", (payload) => {
-    if (!joinedRoom) return;
-    socket.to(joinedRoom).emit("voice-offer", { ...payload, from: socket.data.name });
-  });
-
-  socket.on("voice-answer", (payload) => {
-    if (!joinedRoom) return;
-    socket.to(joinedRoom).emit("voice-answer", payload);
-  });
-
-  socket.on("voice-ice-candidate", (payload) => {
-    if (!joinedRoom) return;
-    socket.to(joinedRoom).emit("voice-ice-candidate", payload);
-  });
-
-  socket.on("voice-end", () => {
-    if (!joinedRoom) return;
-    socket.to(joinedRoom).emit("voice-end");
-  });
-
   socket.on("disconnect", () => {
     if (!joinedRoom) return;
     const room = rooms.get(joinedRoom);
     if (!room) return;
-    socket.to(joinedRoom).emit("voice-end"); // clean up the other side's call UI too
     socket.to(joinedRoom).emit("peer-left", { name: socket.data.name || "Someone" });
     room.members.delete(socket.id);
     if (room.hostSocketId === socket.id) {

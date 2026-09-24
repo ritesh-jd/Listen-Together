@@ -111,38 +111,6 @@
     <section id="chat-panel" class="card hidden">
       <h2>Chat</h2>
 
-      <div id="voice-call-wrap">
-        <button id="voice-call-trigger" class="voice-call-trigger" type="button" aria-label="Start voice call">🎤</button>
-
-        <div id="voice-call-popup" class="voice-call-popup hidden" role="dialog" aria-live="polite" aria-modal="true">
-          <div class="voice-call-header">
-            <span class="voice-call-pill">Voice call</span>
-            <button id="voice-call-close-btn" class="voice-call-close" type="button" aria-label="Close">×</button>
-          </div>
-
-          <div class="row space-between">
-            <span id="call-status" class="hint">Voice call: idle</span>
-          </div>
-
-          <div class="row hidden" id="call-controls">
-            <button id="start-call-btn">🎤 Start Voice Call</button>
-          </div>
-          <div class="row hidden" id="calling-controls">
-            <button id="cancel-call-btn" class="btn-ghost">✖ Cancel Call</button>
-          </div>
-          <div class="row hidden" id="incoming-call-banner">
-            <button id="accept-call-btn">✅ Accept</button>
-            <button id="decline-call-btn" class="btn-ghost">❌ Decline</button>
-          </div>
-          <div class="row hidden" id="active-call-controls">
-            <button id="mute-btn" class="btn-ghost">🔇 Mute</button>
-            <button id="end-call-btn">📞 End Call</button>
-          </div>
-        </div>
-
-        <audio id="remote-audio" autoplay></audio>
-      </div>
-
       <div id="chat-wrap">
         <ul id="chat-log"></ul>
         <div class="row">

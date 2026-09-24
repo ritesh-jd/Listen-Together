@@ -1,8 +1,8 @@
 /* ============================================================
    Listen Together — "late-night shared mixtape" theme
    Warm dusk backdrop + one coral→violet gradient thread that ties
-   together every "connection" moment: primary actions, the room
-   badge, the now-playing pulse, and voice call.
+  together every "connection" moment: primary actions, the room
+  badge, and the now-playing pulse.
    ============================================================ */
 
 :root {
@@ -229,11 +229,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-ghost:hover { border-color: var(--violet); filter: none; background: rgba(140, 107, 255, 0.08); }
 
 .danger-btn {
-  background: linear-gradient(135deg, #ff6f6f, #ff4d6d);
-  color: #fff;
-}
-
-#end-call-btn {
   background: linear-gradient(135deg, #ff6f6f, #ff4d6d);
   color: #fff;
 }
@@ -468,89 +463,6 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .toast-visible { opacity: 1; transform: translateX(0); }
 .toast-warn { border-left-color: var(--warn); }
 .toast-bad { border-left-color: var(--bad); }
-
-/* ---------- Voice call ---------- */
-#voice-call-wrap {
-  position: relative;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 14px;
-  margin-bottom: 4px;
-  min-height: 62px;
-}
-
-.voice-call-trigger {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  padding: 0;
-  min-height: 0;
-  box-shadow: 0 10px 24px rgba(255, 138, 92, 0.3);
-}
-
-.voice-call-trigger:hover { transform: translateY(-1px); }
-
-.voice-call-popup {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  width: min(360px, calc(100vw - 32px));
-  background: rgba(24, 19, 34, 0.98);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
-  padding: 18px;
-  z-index: 200;
-}
-
-@media (max-width: 640px) {
-  .voice-call-popup {
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    border-radius: 20px 20px 0 0;
-    max-height: 75vh;
-    overflow-y: auto;
-  }
-}
-
-.voice-call-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.voice-call-pill {
-  background: var(--gradient-soft);
-  color: var(--coral);
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 0.76em;
-  font-weight: 700;
-}
-
-.voice-call-close {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  min-height: 0;
-  padding: 0;
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-#call-status { font-weight: 600; }
-#call-status.calling, #call-status.connecting { color: var(--warn); }
-#call-status.connected { color: var(--good); }
-#call-status.lost { color: var(--bad); }
 
 /* ---------- Chat ---------- */
 #chat-wrap { margin-top: 10px; }
