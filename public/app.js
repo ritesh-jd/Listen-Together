@@ -70,11 +70,6 @@ async function initLibraryAccess() {
     renderTrackList(allTracks);
     renderPlaylistSelect();
     renderActivePlaylistTracks();
-    if (!isLibraryOwner) {
-      $("delete-playlist-btn")?.classList.add("hidden");
-      $("create-playlist-btn").disabled = true;
-      $("new-playlist-input").disabled = true;
-    }
   } catch (e) {
     console.error("Failed to initialise library permissions", e);
     isLibraryOwner = false;
@@ -235,6 +230,7 @@ $("upload-btn").addEventListener("click", async () => {
 let allPlaylists = {};
 let activePlaylist = null;
 let currentRoomCode = null;
+let myName = "";
 
 async function refreshPlaylists() {
   const roomCode = currentRoomCode || "";
@@ -264,9 +260,9 @@ function renderPlaylistSelect() {
     activePlaylist = null;
   }
 
-  $("delete-playlist-btn").classList.toggle("hidden", !(isLibraryOwner && activePlaylist));
-  $("create-playlist-btn").disabled = !isLibraryOwner;
-  $("new-playlist-input").disabled = !isLibraryOwner;
+  $("delete-playlist-btn").classList.toggle("hidden", !activePlaylist);
+  $("create-playlist-btn").disabled = false;
+  $("new-playlist-input").disabled = false;
 }
 
 function renderActivePlaylistTracks() {
@@ -305,17 +301,12 @@ function renderActivePlaylistTracks() {
 
 $("playlist-select").addEventListener("change", () => {
   activePlaylist = $("playlist-select").value || null;
-  $("delete-playlist-btn").classList.toggle("hidden", !(isLibraryOwner && activePlaylist));
+  $("delete-playlist-btn").classList.toggle("hidden", !activePlaylist);
   renderTrackList(allTracks);
   renderActivePlaylistTracks();
 });
 
 $("create-playlist-btn").addEventListener("click", async () => {
-  if (!isLibraryOwner) {
-    const hasOwnerAccess = await ensureOwnerAccess();
-    if (!hasOwnerAccess) return;
-  }
-
   const name = $("new-playlist-input").value.trim();
   if (!name) return;
   const res = await fetch("/api/playlists", {
@@ -338,7 +329,7 @@ $("create-playlist-btn").addEventListener("click", async () => {
 });
 
 $("delete-playlist-btn").addEventListener("click", async () => {
-  if (!activePlaylist || !isLibraryOwner) return;
+  if (!activePlaylist) return;
   if (!confirm(`Delete the playlist "${activePlaylist}"? This won't delete the songs themselves.`)) return;
   const res = await fetch(`/api/playlists/${encodeURIComponent(activePlaylist)}?roomCode=${encodeURIComponent(currentRoomCode || "")}`, {
     method: "DELETE",
@@ -463,6 +454,7 @@ document.addEventListener("click", (event) => {
 });
 
 $("join-room-btn").addEventListener("click", async () => {
+  if (socket) return;
   const name = getDisplayName();
   if (!name) return;
 
@@ -474,17 +466,14 @@ $("join-room-btn").addEventListener("click", async () => {
   currentRoomCode = code;
   $("room-share-hint").textContent =
     `Share this room code with your friend: ${code} (or send them the link: ${window.location.origin}/?room=${code})`;
+  localStorage.setItem("lt_last_room", code);
   connectSocket(code);
-  showPanel("library-panel");
-  showPanel("player-panel");
-  showPanel("chat-panel");
-  await refreshTrackList();
-  await refreshPlaylists();
 });
 
 function connectSocket(roomCode) {
   socket = io();
   const name = getDisplayName();
+  myName = name;
 
   socket.on("connect", () => {
     calibrateClock().then(() => {
@@ -493,6 +482,9 @@ function connectSocket(roomCode) {
   });
 
   socket.on("joined", ({ isHost: hostFlag, lastState }) => {
+    ["library-panel", "player-panel", "chat-panel"].forEach(showPanel);
+    refreshTrackList();
+    refreshPlaylists();
     isHost = hostFlag;
     updateHostBadge();
     if (lastState && !isHost) schedulePlayback(lastState);
@@ -517,11 +509,18 @@ function connectSocket(roomCode) {
     }
   });
 
-  socket.on("peer-joined", ({ name }) => logChat("system", `${name} joined the room`));
-  socket.on("peer-left", ({ name }) => logChat("system", `${name} left the room`));
-  socket.on("chat", ({ name, text }) => logChat(name, text));
+  socket.on("peer-joined", ({ name }) => { logChat("system", `${name} joined the room`); showToast(`👋 ${name} joined`, "good"); });
+  socket.on("peer-left", ({ name }) => { logChat("system", `${name} left the room`); showToast(`🚪 ${name} left`, "warn"); });
+  socket.on("chat", ({ name, text }) => {
+    logChat(name, text);
+    if (name !== myName && !chatInView()) showToast(`💬 ${name}: ${String(text).slice(0, 60)}`, "chat", () => $("chat-panel").scrollIntoView({ behavior: "smooth", block: "center" }));
+  });
   socket.on("join-error", ({ message }) => {
-    alert(message || "Unable to join this room.");
+    showToast(message || "Unable to join this room.", "bad");
+    $("room-share-hint").textContent = message || "Unable to join this room.";
+    socket.disconnect();
+    socket = null;
+    currentRoomCode = null;
   });
 
   socket.on("room-count", ({ count, names = [] }) => {
@@ -530,7 +529,7 @@ function connectSocket(roomCode) {
 
   // Recalibrate periodically — clocks can slowly drift apart over a long
   // listening session, and this keeps the shared "now" accurate.
-  setInterval(calibrateClock, 30000);
+  setInterval(() => { if (socket) calibrateClock(); }, 30000);
 }
 
 // ---------- Clock calibration ----------
@@ -815,24 +814,29 @@ $("pause-btn").addEventListener("click", () => {
   schedulePlayback(state);
 });
 
-$("skip-back-btn").addEventListener("click", () => {
-  if (!isHost || !currentTrack) return;
-  const el = audio();
-  const newPos = Math.max(0, el.currentTime - 10) * 1000;
-  const state = buildScheduledState(!el.paused, newPos);
-  broadcastScheduled(state);
-  schedulePlayback(state);
-});
+function trackOrder() {
+  const ids = getCurrentPlaylistTrackIds();
+  const list = ids.map((id) => allTracks.find((t) => t.id === id)).filter(Boolean);
+  return list.length ? list : allTracks;
+}
 
-$("skip-forward-btn").addEventListener("click", () => {
-  if (!isHost || !currentTrack) return;
-  const el = audio();
-  const maxSeconds = el.duration || Infinity;
-  const newPos = Math.min(maxSeconds, el.currentTime + 10) * 1000;
-  const state = buildScheduledState(!el.paused, newPos);
-  broadcastScheduled(state);
-  schedulePlayback(state);
-});
+function stepTrack(dir) {
+  if (!currentTrack) return;
+  if (dir > 0) {
+    const queued = getNextQueuedTrack();
+    if (queued) return playTrack(queued);
+  } else {
+    if (audio().currentTime > 3) return playTrack(currentTrack);
+    if (currentQueueIndex > 0) return playTrack(playbackQueue[currentQueueIndex - 1]);
+  }
+  const list = trackOrder();
+  if (!list.length) return;
+  const i = list.findIndex((t) => t.id === currentTrack.id);
+  playTrack(list[(i + dir + list.length) % list.length]);
+}
+
+$("skip-back-btn").addEventListener("click", () => stepTrack(-1));
+$("skip-forward-btn").addEventListener("click", () => stepTrack(1));
 
 $("claim-host-btn").addEventListener("click", () => {
   isHost = true;
@@ -919,9 +923,29 @@ setInterval(() => {
 }, HOST_HEARTBEAT_INTERVAL_MS);
 
 // ---------- Chat ----------
+function chatInView() {
+  const r = $("chat-panel").getBoundingClientRect();
+  return r.top >= 0 && r.bottom <= window.innerHeight;
+}
+
+function showToast(message, kind = "good", onClick) {
+  const box = $("toast-container");
+  const t = document.createElement("div");
+  t.className = `toast toast-${kind}`;
+  t.textContent = message;
+  if (onClick) t.addEventListener("click", onClick);
+  box.appendChild(t);
+  while (box.children.length > 3) box.firstChild.remove();
+  requestAnimationFrame(() => t.classList.add("toast-visible"));
+  setTimeout(() => { t.classList.remove("toast-visible"); setTimeout(() => t.remove(), 300); }, 4000);
+}
+
 function logChat(name, text) {
   const li = document.createElement("li");
-  li.innerHTML = `<b>${name}:</b> ${text}`;
+  const b = document.createElement("b");
+  b.textContent = `${name}: `;
+  li.appendChild(b);
+  li.appendChild(document.createTextNode(text));
   $("chat-log").appendChild(li);
   $("chat-log").scrollTop = $("chat-log").scrollHeight;
 }
@@ -937,6 +961,50 @@ function sendChat() {
   $("chat-input").value = "";
 }
 
+// ---------- Spinning disc: turns while playing, drag it like a DJ to scrub ----------
+(function initDisc() {
+  const disc = $("cd-disc");
+  if (!disc) return;
+  const SEC_PER_TURN = 8;
+  const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let angle = 0, last = performance.now(), dragging = false, lastPA = 0, pos = 0;
+  const pa = (e) => {
+    const r = disc.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+  };
+  (function frame(t) {
+    const el = audio();
+    if (!dragging && !calm && el && !el.paused && !el.ended) angle = (angle + (t - last) * 0.12) % 360;
+    last = t;
+    disc.style.transform = `rotate(${angle}deg)`;
+    requestAnimationFrame(frame);
+  })(last);
+  disc.addEventListener("pointerdown", (e) => {
+    if (!currentTrack || !audio().duration) return;
+    if (!isHost) { isHost = true; socket.emit("claim-host"); updateHostBadge(); }
+    dragging = true; disc.setPointerCapture(e.pointerId);
+    lastPA = pa(e); pos = audio().currentTime;
+  });
+  disc.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    let d = pa(e) - lastPA;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    lastPA = pa(e); angle += d;
+    pos = Math.min(audio().duration, Math.max(0, pos + (d / 360) * SEC_PER_TURN));
+    audio().currentTime = pos;
+  });
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    const state = buildScheduledState(!audio().paused, pos * 1000);
+    broadcastScheduled(state);
+    schedulePlayback(state);
+  };
+  disc.addEventListener("pointerup", end);
+  disc.addEventListener("pointercancel", end);
+})();
+
 // ---------- Boot ----------
 (function init() {
   const savedName = localStorage.getItem("lt_display_name");
@@ -945,6 +1013,7 @@ function sendChat() {
   const params = new URLSearchParams(window.location.search);
   const roomFromLink = params.get("room");
   if (roomFromLink) $("room-code-input").value = roomFromLink;
+  else if (localStorage.getItem("lt_last_room")) $("room-code-input").value = localStorage.getItem("lt_last_room");
 
   initLibraryAccess();
 })();

@@ -11,9 +11,10 @@
 </head>
 <body>
   <div id="room-status-badge" class="hidden">
-    <span id="room-count-icon">👥</span>
-    <span id="room-count-text">1</span>
-    <span id="room-names-inline"></span>
+    <button id="room-badge-button" class="room-badge-button" type="button" aria-expanded="false">
+      <span id="room-count-icon">👥</span> <span id="room-count-text">1</span>
+    </button>
+    <div id="room-badge-menu" class="room-badge-menu hidden"><ul id="room-names-inline"></ul></div>
   </div>
   <div id="toast-container"></div>
 
@@ -67,7 +68,9 @@
           <button id="pause-btn" class="btn-ghost">⏸ Pause</button>
           <button id="skip-forward-btn" class="btn-ghost">10s ⏩</button>
           <button id="claim-host-btn" class="btn-ghost">🎙 Take control</button>
+          <button id="queue-toggle-btn" class="btn-ghost">🎶 Queue</button>
         </div>
+        <div id="queue-panel" class="hidden"><h3>Up next</h3><ul id="queue-list"></ul></div>
         <input id="seek-slider" type="range" min="0" max="100" value="0" />
       </section>
 
@@ -107,6 +110,11 @@
         </div>
       </section>
     </div>
+  </div>
+    <div id="calling-controls"><button id="cancel-call-btn"></button></div>
+    <div id="incoming-call-banner"><button id="accept-call-btn"></button><button id="decline-call-btn"></button></div>
+    <div id="active-call-controls"><button id="mute-btn"></button><button id="end-call-btn"></button></div>
+    <audio id="remote-audio"></audio>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

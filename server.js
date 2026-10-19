@@ -127,7 +127,7 @@ function savePlaylists(playlists) {
 
 function getRoomPlaylists(roomCode) {
   const all = loadPlaylists();
-  const safeRoomCode = String(roomCode || "").trim();
+  const safeRoomCode = String(roomCode || "").trim().toUpperCase();
   if (!safeRoomCode) return {};
   if (!all[safeRoomCode]) all[safeRoomCode] = {};
   return all[safeRoomCode];
@@ -135,7 +135,7 @@ function getRoomPlaylists(roomCode) {
 
 function saveRoomPlaylists(roomCode, roomSet) {
   const all = loadPlaylists();
-  const safeRoomCode = String(roomCode || "").trim();
+  const safeRoomCode = String(roomCode || "").trim().toUpperCase();
   if (!safeRoomCode) return;
   all[safeRoomCode] = roomSet;
   savePlaylists(all);
@@ -147,7 +147,7 @@ app.get("/api/playlists", (req, res) => {
   res.json({ playlists: roomPlaylists });
 });
 
-app.post("/api/playlists", requireOwner, (req, res) => {
+app.post("/api/playlists", (req, res) => {
   const roomCode = String(req.body?.roomCode || "").trim();
   const name = (req.body?.name || "").trim();
   if (!name) return res.status(400).json({ error: "name required" });
@@ -158,7 +158,7 @@ app.post("/api/playlists", requireOwner, (req, res) => {
   res.json({ playlists: roomPlaylists });
 });
 
-app.delete("/api/playlists/:name", requireOwner, (req, res) => {
+app.delete("/api/playlists/:name", (req, res) => {
   const roomCode = String(req.query.roomCode || "").trim();
   if (!roomCode) return res.status(400).json({ error: "room required" });
   const roomPlaylists = getRoomPlaylists(roomCode);
@@ -167,7 +167,7 @@ app.delete("/api/playlists/:name", requireOwner, (req, res) => {
   res.json({ playlists: roomPlaylists });
 });
 
-app.post("/api/playlists/:name/tracks", requireOwner, (req, res) => {
+app.post("/api/playlists/:name/tracks", (req, res) => {
   const roomCode = String(req.body?.roomCode || "").trim();
   const trackId = req.body?.trackId;
   if (!roomCode) return res.status(400).json({ error: "room required" });
@@ -179,7 +179,7 @@ app.post("/api/playlists/:name/tracks", requireOwner, (req, res) => {
   res.json({ playlists: roomPlaylists });
 });
 
-app.delete("/api/playlists/:name/tracks/:trackId", requireOwner, (req, res) => {
+app.delete("/api/playlists/:name/tracks/:trackId", (req, res) => {
   const roomCode = String(req.query.roomCode || "").trim();
   if (!roomCode) return res.status(400).json({ error: "room required" });
   const roomPlaylists = getRoomPlaylists(roomCode);
@@ -210,8 +210,9 @@ io.on("connection", (socket) => {
   let joinedRoom = null;
 
   socket.on("join-room", ({ roomCode, name }) => {
-    const cleanRoomCode = String(roomCode || "").trim();
-    const cleanName = String(name || "").trim();
+    if (joinedRoom) return;
+    const cleanRoomCode = String(roomCode || "").trim().toUpperCase();
+    const cleanName = String(name || "").trim().slice(0, 20);
     if (!cleanRoomCode || !cleanName) {
       socket.emit("join-error", { message: "Name is required to join a room." });
       return;
