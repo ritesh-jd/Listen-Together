@@ -185,3 +185,24 @@ button:focus-visible { outline: 3px solid var(--violet); outline-offset: 2px; }
 .toast-visible { animation: pop .35s ease; }
 .toast-chat { background: var(--sky); }
 @keyframes pop { 0% { transform: translateX(24px) scale(.9); } 60% { transform: translateX(-4px) scale(1.04); } 100% { transform: none; } }
+
+/* phone fixes: no sideways scrolling, nothing covering the chat box */
+html, body { overflow-x: hidden; }
+.row input[type="text"] { flex: 1 1 150px; width: auto; min-width: 0; }
+.hero h1 { font-size: clamp(1.9rem, 9.5vw, 6.2rem); overflow-wrap: anywhere; }
+@media (max-width: 780px) {
+  .library-col { flex: 1 1 100%; min-width: 0; }
+  .nav { padding-right: 84px; }
+  .marquee { transform: none; }
+}
+@media (max-width: 520px) {
+  #app { padding: 12px 12px 56px; }
+  .hero { padding: 22px 0 16px; }
+  .logo { font-size: .9rem; padding: 6px 12px; }
+  #room-status-badge { top: 10px; bottom: auto; left: auto; right: 10px; max-width: none; }
+  .room-badge-menu { top: calc(100% + 8px); bottom: auto; }
+  #toast-container { top: 58px; left: 10px; right: 10px; max-width: none; }
+  .controls button { flex: 1 1 calc(50% - 10px); padding-inline: 10px; }
+  .card { padding: 16px; }
+  h2 { font-size: 1.3rem; }
+}
