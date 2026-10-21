@@ -206,3 +206,11 @@ html, body { overflow-x: hidden; }
   .card { padding: 16px; }
   h2 { font-size: 1.3rem; }
 }
+
+/* fix: long song names were stretching the whole page wider than the phone screen */
+.card-grid > *, .card, .library-columns, .library-col { min-width: 0; max-width: 100%; }
+@media (max-width: 780px) { .card-grid { grid-template-columns: minmax(0, 1fr); } }
+#track-list li, #playlist-track-list li, .track-name { min-width: 0; }
+#now-playing, #now-playing > div { min-width: 0; }
+#now-playing-title, #queue-list li, #chat-log li { overflow-wrap: anywhere; }
+select { max-width: 100%; text-overflow: ellipsis; }

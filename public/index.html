@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
   <div id="room-status-badge" class="hidden">
@@ -67,10 +67,6 @@
           <button id="play-btn">▶ Play</button>
           <button id="pause-btn" class="btn-ghost">⏸ Pause</button>
           <button id="skip-forward-btn" class="btn-ghost">Next ⏭</button>
-          <!-- <button id="skip-back-btn" class="btn-ghost">⏪</button> -->
-          <button id="play-btn">▶ Play</button>
-          <button id="pause-btn" class="btn-ghost">⏸ Pause</button>
-          <!-- <button id="skip-forward-btn" class="btn-ghost">1⏩</button> -->
           <button id="claim-host-btn" class="btn-ghost">🎙 Take control</button>
           <button id="queue-toggle-btn" class="btn-ghost">🎶 Queue</button>
         </div>
@@ -114,11 +110,6 @@
         </div>
       </section>
     </div>
-  </div>
-    <div id="calling-controls"><button id="cancel-call-btn"></button></div>
-    <div id="incoming-call-banner"><button id="accept-call-btn"></button><button id="decline-call-btn"></button></div>
-    <div id="active-call-controls"><button id="mute-btn"></button><button id="end-call-btn"></button></div>
-    <audio id="remote-audio"></audio>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
